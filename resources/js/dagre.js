@@ -110,16 +110,27 @@ function slicedQuery(myArray, mySparql, chunk) {
 }
 
 function appendDefinitionTooltip(inner, g) {
+    var touchtime = 0;
     //show tooltip on click on nodes                    
     inner.selectAll("g.node")
         .on("click", function(d) {
-            refreshScreen4(this);
-            var iri = g.node(d).iri;
-            console.log(iri[0]);
-            for (var i in iri) {
-                g.nodess[iri[i]].showTooltip(d3.event.pageX, d3.event.pageY);
+            if (touchtime === 0) {
+                //set first click 
+                touchtime = new Date().getTime();
+            } else {
+                if ((new Date().getTime()) - touchtime < 800) {
+                    touchtime = 0;
+                } else {
+                    refreshScreen4(this);
+                    var iri = g.node(d).iri;
+                    console.log(iri[0]);
+                    for (var i in iri) {
+                        g.nodess[iri[i]].showTooltip(d3.event.pageX, d3.event.pageY);
+                    }
+                    d3.event.stopPropagation();
+                    touchtime = new Date().getTime();
+                }
             }
-            d3.event.stopPropagation();
         })
         .on("mousedown", function() {
             d3.event.stopPropagation();

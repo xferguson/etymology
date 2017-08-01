@@ -109,16 +109,46 @@ function slicedQuery(myArray, mySparql, chunk) {
     return query;
 }
 
+function toggleNode(inner, g, d) {
+    var render = new dagreD3.render();
+    g.graphNodes[d].der = false;
+    g.graphNodes[d];
+    g.graphNodes[d].linkedToTarget.map(function(e) {
+        g.graphNodes[e].der = false;
+        g.graphNodes[e].linked = false;
+        g.graphNodes[e].isAncestor = false;
+        g.graphNodes[e].linkedToSource = false;
+        g.graphNodes[e].source = false;
+    });
+    g.graphNodes[d].linkedToTarget = false;
+    render(inner, g)
+
+    // function collapse(d) {
+        // var dNode = d3.selectAll('d.node').node(d);
+        // if (dNode.linkedToTarget) {
+        //     dNode._children = dNode.linkedToTarget;
+        //     dNode._children.forEach(collapse);
+        //     dNode.remove();
+        //     // dNode.linkedToTarget = null;
+        // }
+    // }
+
+    // d3.select('d.node').node(d).forEach(collapse);
+    // update(root);
+
+}
+
 function appendDefinitionTooltip(inner, g) {
     var touchtime = 0;
     //show tooltip on click on nodes                    
     inner.selectAll("g.node")
         .on("click", function(d) {
             if (touchtime === 0) {
-                //set first click 
+                //set first click
                 touchtime = new Date().getTime();
             } else {
                 if ((new Date().getTime()) - touchtime < 800) {
+                    toggleNode(inner, g, d);
                     touchtime = 0;
                 } else {
                     refreshScreen4(this);

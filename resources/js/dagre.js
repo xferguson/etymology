@@ -111,30 +111,33 @@ function slicedQuery(myArray, mySparql, chunk) {
 
 function toggleNode(inner, g, d) {
     var render = new dagreD3.render();
-    g.graphNodes[d].der = false;
-    g.graphNodes[d];
-    g.graphNodes[d].linkedToTarget.map(function(e) {
-        g.graphNodes[e].der = false;
-        g.graphNodes[e].linked = false;
-        g.graphNodes[e].isAncestor = false;
-        g.graphNodes[e].linkedToSource = false;
-        g.graphNodes[e].source = false;
-    });
-    g.graphNodes[d].linkedToTarget = false;
-    render(inner, g)
-
-    // function collapse(d) {
-        // var dNode = d3.selectAll('d.node').node(d);
-        // if (dNode.linkedToTarget) {
-        //     dNode._children = dNode.linkedToTarget;
-        //     dNode._children.forEach(collapse);
-        //     dNode.remove();
-        //     // dNode.linkedToTarget = null;
+    console.log(g.nodess);
+    console.log(g);
+    var toggleChildNodes = function (d) {
+        // if (!g.graphNodes[d].isClosed) {
+        //     g.graphNodes[d]._linkedToTarget = g.graphNodes[d].linkedToTarget.map(function(dd) {  
+        //         var dd = toggleChildNodes(dd);
+        //         g.removeNode(dd);
+        //         return dd;
+        //     });
+        // } else {
+        //     g.graphNodes[d].linkedToTarget = g.graphNodes[d]._linkedToTarget.map(function(dd) {  
+        //         var dd = toggleChildNodes(dd);
+        //         g.setNode(dd, g.graphNodes[d].closedNode[dd]);
+        //         return dd;
+        //     });
         // }
-    // }
-
-    // d3.select('d.node').node(d).forEach(collapse);
-    // update(root);
+        g.graphNodes[d].linkedToTarget.forEach(function(dd) {
+            toggleChildNodes(dd);
+        })
+        g.graphNodes[d].isClosed = !g.graphNodes[d].isClosed;
+        // return g.graphNodes[d];
+        // return d;
+    }
+    toggleChildNodes(d);
+    // var dNumber = toggleChildNodes(d);
+    // console.log(dNumber);
+    render(inner, g)
 
 }
 

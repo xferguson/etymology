@@ -268,14 +268,77 @@ var GRAPH = (function(module) {
         };
 
         var setData = function(ancestors, ancestorResponse, propertyResponse) {
-            etyBase.tree.data = propertyResponse.reduce((all, a) => {
+            etyBase.tree.rawData = propertyResponse.reduce((all, a) => {
                 all = all.concat(JSON.parse(a).results.bindings);
                 return all;
             }, []);
         };
 
+        var prepNode = function(gn, n, g) {
+            var gg = new etyBase.LOAD.classes.GraphNode(gn);
+            gg.counter = gn;
+            // gg.iri = g.nodess[n].eqIri;
+            // gg.iso = g.nodess[n].iso;
+            gg.iri = n.eqIri;
+            gg.iso = n.iso;
+            gg.label = gg.iri.map(function(i) {
+                // return g.nodess ? g.nodess.label : n.label;
+                return g.nodess[i].label;
+            })
+                .filter(etyBase.helpers.onlyUnique)
+                .join(",");
+            // gg.lang = g.nodess[n].lang;
+            // gg.isAncestor = g.nodess[n].isAncestor;
+            gg.lang = n.lang;
+            gg.isAncestor = n.isAncestor;
+            if (gg.isAncestor) {
+                gg.style = "fill: #F0E68C; stroke: black";
+            } else {
+                gg.style = "fill: lightBlue; stroke: black";
+            }
+            g.setNode(gn, gg);
+        };
+
+        var toggleNode = function(d) {
+            var g = etyBase.tree.graph;
+            var arrayData = etyBase.tree.rawData;
+            var children;
+            var iri = g.node(d).iri;
+            // arrayData[iri]          
+            console.log('d:' + d);
+            console.log('item d:');
+            console.log(g.node(d));
+
+            g.node(d).collapsed = (undefined !== g.node(d).collapsed) && (g.node(d).collapsed) ? false : true;
+            if (g.node(d).collapsed) {
+                console.log('successors');
+                var s = g.successors(d);
+                console.log("s:");
+                console.log(s);
+                g.node(d)._sCollapsed = [];
+                g.node(d)._nCollapsed = [];
+                s.forEach(function(el) {
+                    console.log(el);
+                    g.node(d)._sCollapsed.push(g.node(el));
+                    g.node(d)._nCollapsed.push(g.nodess[g.node(el).iri]);
+                    g = g.removeNode(el);
+                });
+
+                setGraph(g);
+                d3.selectAll('g').remove();
+                renderGraph();
+            } else {
+                g.node(d)._sCollapsed.forEach(function(el, index) {
+                    prepNode(el, g.node(d)._nCollapsed[index], g);
+                });
+                setGraph(g);
+                d3.selectAll('g').remove();
+                renderGraph();
+            }
+        }
+
         var parseEtymologyNodes = function(ancestors, ancestorResponse, propertyResponse) {
-            var allArray = etyBase.tree.data;
+            var allArray = etyBase.tree.rawData;
             var g = new dagreD3.graphlib.Graph().setGraph({ rankdir: 'LR' });
             g.nodess = {};
 
@@ -413,23 +476,7 @@ var GRAPH = (function(module) {
                 for (var n in g.nodess) {
                     var gn = g.nodess[n].graphNode;
                     if (undefined === g._nodes[gn]) {
-                        var gg = new etyBase.LOAD.classes.GraphNode(gn);
-                        gg.counter = gn;
-                        gg.iri = g.nodess[n].eqIri;
-                        gg.iso = g.nodess[n].iso;
-                        gg.label = gg.iri.map(function(i) {
-                                return g.nodess[i].label;
-                            })
-                            .filter(etyBase.helpers.onlyUnique)
-                            .join(",");
-                        gg.lang = g.nodess[n].lang;
-                        gg.isAncestor = g.nodess[n].isAncestor;
-                        if (gg.isAncestor) {
-                            gg.style = "fill: #F0E68C; stroke: black";
-                        } else {
-                            gg.style = "fill: lightBlue; stroke: black";
-                        }
-                        g.setNode(gn, gg);
+                        prepNode(gn, g.nodess[n], g);
                     }
                 }
 
@@ -477,6 +524,7 @@ var GRAPH = (function(module) {
 
         var setGraph = function(g) {
             etyBase.tree.graph = g;
+
         };
 
         var renderGraph = function() {
@@ -484,35 +532,47 @@ var GRAPH = (function(module) {
                 console.error('Empty Graph');
                 return false;
             }
+            // console.log(etyBase.tree.graph);
             var g = etyBase.tree.graph;
-            var svg = d3.select("#tree-container").append("svg")
+            // console.log("graph length: " + g.nodes().length);
+            // console.log("etyBase.tree.svg");
+            // console.log(etyBase.tree.svg);
+            if (etyBase.tree.svg) {
+                etyBase.tree.svg.remove();
+            }
+            // if (!etyBase.tree.svg) {
+            etyBase.tree.svg = d3.select("#tree-container").append("svg")
                 .attr("id", "tree-overlay")
                 .attr("width", window.innerWidth)
                 .attr("height", window.innerHeight - $('#header').height());
-
-            var inner = svg.append("g");
+            // }
+            if (etyBase.tree.inner) {
+                // etyBase.tree.inner.selectAll("g").remove();
+                etyBase.tree.inner.remove();
+            }
+            etyBase.tree.inner = etyBase.tree.svg.append("g");
 
             // Set up zoom support                      
             var zoom = d3.behavior.zoom().on("zoom", function() {
-                inner.attr("transform", "translate(" + d3.event.translate + ")" +
+                etyBase.tree.inner.attr("transform", "translate(" + d3.event.translate + ")" +
                     "scale(" + d3.event.scale + ")");
             });
-            svg.call(zoom); //.on("dblclick.zoom", null);
+            etyBase.tree.svg.call(zoom); //.on("dblclick.zoom", null);
 
             // Create the renderer          
             var render = new dagreD3.render();
 
             // Run the renderer. This is what draws the final graph.  
-            render(inner, g);
+            render(etyBase.tree.inner, g);
 
             // Center the graph       
             var initialScale = 0.75;
             zoom.translate([(window.innerWidth - g.graph().width * initialScale) / 2, 20])
                 .scale(initialScale)
-                .event(svg);
+                .event(etyBase.tree.svg);
 
             //show tooltip on mouseover nodes 
-            inner.selectAll("g.node")
+            etyBase.tree.inner.selectAll("g.node")
                 .on("mouseover", function(d) {
                     d3.selectAll(".tooltip").remove();
                     d3.select("#tooltipPopup")
@@ -558,14 +618,18 @@ var GRAPH = (function(module) {
                                         .append("p")
                                         .attr("class", "tooltip")
                                         .html(text);
-                                    d3.event.stopPropagation();
+                                    // d3.event.stopPropagation();
                                 });
                         });
                     }
                 });
+            etyBase.tree.inner.selectAll("g.node")
+                .on("click", function(d) {
+                    toggleNode(d);
+                });
 
             //append language tag to nodes            
-            inner.selectAll("g.node")
+            etyBase.tree.inner.selectAll("g.node")
                 .append("text")
                 .style("display", "inline")
                 .attr("class", "isoText")
@@ -576,7 +640,7 @@ var GRAPH = (function(module) {
                 });
 
             //show tooltip on mouseover language tag   
-            inner.selectAll("g.node")
+            etyBase.tree.inner.selectAll("g.node")
                 .append("rect")
                 .attr("x", "0.8em")
                 .attr("y", "2.2em")
@@ -598,8 +662,8 @@ var GRAPH = (function(module) {
                     d3.event.stopPropagation();
                 });
 
-            //svg.attr("height", g.graph().height * initialScale + 40);}}
-            return inner;
+            //etyBase.tree.svg.attr("height", g.graph().height * initialScale + 40);}}
+            return etyBase.tree.inner;
         };
 
         var init = function() {
